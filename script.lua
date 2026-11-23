@@ -1,100 +1,115 @@
--- GOJO MM2 HUB V4
+-- GOJO HUB V5 | MM2 TEST EDITION
+-- Roblox Studio - LocalScript
+
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
-local LP = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
-local PG = LP:WaitForChild("PlayerGui")
-
-local RED = Color3.fromRGB(230, 20, 45)
-local DARK = Color3.fromRGB(13, 13, 17)
-local PANEL = Color3.fromRGB(27, 27, 34)
-local WHITE = Color3.new(1,1,1)
-
-local AimEnabled = false
-local AimSmoothness = 0.15
-local AimFOV = 250
-local SpeedEnabled = false
-local JumpEnabled = false
-
-local old = PG:FindFirstChild("GOJO_V4")
-if old then old:Destroy() end
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
 
 local gui = Instance.new("ScreenGui")
-gui.Name = "GOJO_V4"
+gui.Name = "GOJO_HUB_V5"
 gui.ResetOnSpawn = false
-gui.Parent = PG
+gui.Parent = player:WaitForChild("PlayerGui")
 
-local function corner(obj,r)
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0,r)
-    c.Parent = obj
+local main = Instance.new("Frame")
+main.Size = UDim2.fromOffset(300, 390)
+main.Position = UDim2.new(0.5, -150, 0.5, -195)
+main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+main.Parent = gui
+
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 12)
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(220, 0, 40)
+stroke.Thickness = 2
+stroke.Parent = main
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 45)
+title.BackgroundColor3 = Color3.fromRGB(100, 0, 20)
+title.Text = "GOJO HUB V5"
+title.TextColor3 = Color3.new(1,1,1)
+title.TextSize = 22
+title.Font = Enum.Font.GothamBold
+title.Parent = main
+
+local function button(text, y, callback)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(0.9, 0, 0, 38)
+    b.Position = UDim2.new(0.05, 0, 0, y)
+    b.BackgroundColor3 = Color3.fromRGB(40, 20, 30)
+    b.TextColor3 = Color3.new(1,1,1)
+    b.Text = text
+    b.TextSize = 14
+    b.Font = Enum.Font.GothamBold
+    b.Parent = main
+    Instance.new("UICorner", b)
+    b.MouseButton1Click:Connect(callback)
+    return b
 end
 
--- MAIN WINDOW
+local aim = false
+local esp = false
+local fovEnabled = false
 
-local main = Instance.new("Frame",gui)
-main.Size = UDim2.fromOffset(350,420)
-main.Position = UDim2.new(.5,-175,.5,-210)
-main.BackgroundColor3 = DARK
-main.Active = true
-corner(main,15)
+button("AIM ASSIST: OFF", 60, function()
+    aim = not aim
+end)
 
-local stroke = Instance.new("UIStroke",main)
-stroke.Color = RED
-stroke.Thickness = 2
+button("MURDERER ESP: OFF", 105, function()
+    esp = not esp
+end)
 
--- HEADER
+button("FOV CIRCLE: OFF", 150, function()
+    fovEnabled = not fovEnabled
+end)
 
-local header = Instance.new("TextLabel",main)
-header.Size = UDim2.new(1,0,0,48)
-header.BackgroundColor3 = RED
-header.Text = "GOJO MM2 HUB V4"
-header.TextColor3 = WHITE
-header.Font = Enum.Font.GothamBold
-header.TextSize = 19
-corner(header,12)
+button("SPEED +", 195, function()
+    local h = player.Character and
+        player.Character:FindFirstChildOfClass("Humanoid")
+    if h then h.WalkSpeed = 24 end
+end)
 
--- CLOSE BUTTON
+button("JUMP +", 240, function()
+    local h = player.Character and
+        player.Character:FindFirstChildOfClass("Humanoid")
+    if h then h.JumpPower = 65 end
+end)
 
-local close = Instance.new("TextButton",main)
-close.Size = UDim2.fromOffset(35,35)
-close.Position = UDim2.new(1,-42,0,6)
-close.Text = "X"
-close.BackgroundColor3 = DARK
-close.TextColor3 = WHITE
-corner(close,8)
+button("RESET MOVEMENT", 285, function()
+    local h = player.Character and
+        player.Character:FindFirstChildOfClass("Humanoid")
+    if h then
+        h.WalkSpeed = 16
+        h.JumpPower = 50
+    end
+end)
 
-local floating = Instance.new("TextButton",gui)
-floating.Size = UDim2.fromOffset(60,60)
-floating.Position = UDim2.new(0,15,.5,0)
-floating.Text = "GOJO"
-floating.TextColor3 = WHITE
-floating.BackgroundColor3 = RED
-floating.Font = Enum.Font.GothamBold
-floating.Visible = false
-corner(floating,15)
-
-close.Activated:Connect(function()
+local close = button("CLOSE HUB", 330, function()
     main.Visible = false
-    floating.Visible = true
 end)
 
-floating.Activated:Connect(function()
-    main.Visible = true
-    floating.Visible = false
+local floating = Instance.new("TextButton")
+floating.Size = UDim2.fromOffset(55,55)
+floating.Position = UDim2.new(0,15,0.5,0)
+floating.Text = "GOJO"
+floating.BackgroundColor3 = Color3.fromRGB(130,0,30)
+floating.TextColor3 = Color3.new(1,1,1)
+floating.Parent = gui
+Instance.new("UICorner", floating).CornerRadius = UDim.new(1,0)
+
+floating.MouseButton1Click:Connect(function()
+    main.Visible = not main.Visible
 end)
 
--- DRAG WINDOW
+-- Drag UI
+local dragging, dragStart, startPos
 
-local dragging
-local dragStart
-local startPos
-
-header.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch
-    or input.UserInputType == Enum.UserInputType.MouseButton1 then
+title.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
         dragStart = input.Position
         startPos = main.Position
@@ -102,7 +117,10 @@ header.InputBegan:Connect(function(input)
 end)
 
 UIS.InputChanged:Connect(function(input)
-    if dragging then
+    if dragging and (
+        input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch
+    ) then
         local delta = input.Position - dragStart
         main.Position = UDim2.new(
             startPos.X.Scale,
@@ -114,218 +132,85 @@ UIS.InputChanged:Connect(function(input)
 end)
 
 UIS.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch
-    or input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
         dragging = false
     end
 end)
 
--- SIDEBAR
+-- FOV visualization
+local circle = Instance.new("Frame")
+circle.Size = UDim2.fromOffset(180,180)
+circle.AnchorPoint = Vector2.new(0.5,0.5)
+circle.Position = UDim2.fromScale(0.5,0.5)
+circle.BackgroundTransparency = 1
+circle.Visible = false
+circle.Parent = gui
 
-local sidebar = Instance.new("Frame",main)
-sidebar.Position = UDim2.fromOffset(8,58)
-sidebar.Size = UDim2.new(0,105,1,-68)
-sidebar.BackgroundColor3 = PANEL
-corner(sidebar,10)
+local circleStroke = Instance.new("UIStroke")
+circleStroke.Color = Color3.fromRGB(255,0,50)
+circleStroke.Thickness = 2
+circleStroke.Parent = circle
 
-local sideLayout = Instance.new("UIListLayout",sidebar)
-sideLayout.Padding = UDim.new(0,5)
-sideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+Instance.new("UICorner", circle).CornerRadius = UDim.new(1,0)
 
--- CONTENT
+-- Role-based test aim assist
+RunService.RenderStepped:Connect(function()
+    circle.Visible = fovEnabled
 
-local content = Instance.new("ScrollingFrame",main)
-content.Position = UDim2.fromOffset(121,58)
-content.Size = UDim2.new(1,-130,1,-68)
-content.BackgroundColor3 = PANEL
-content.BorderSizePixel = 0
-content.ScrollBarThickness = 3
-content.AutomaticCanvasSize = Enum.AutomaticSize.Y
-corner(content,10)
+    if not aim then return end
 
-local layout = Instance.new("UIListLayout",content)
-layout.Padding = UDim.new(0,8)
-layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
-local function clear()
-    for _,v in pairs(content:GetChildren()) do
-        if v:IsA("GuiObject") and v ~= layout then
-            v:Destroy()
-        end
-    end
-end
-
-local function label(txt)
-    local l = Instance.new("TextLabel",content)
-    l.Size = UDim2.new(1,-12,0,35)
-    l.BackgroundTransparency = 1
-    l.Text = txt
-    l.TextColor3 = RED
-    l.Font = Enum.Font.GothamBold
-    l.TextSize = 13
-end
-
-local function button(txt,callback)
-    local b = Instance.new("TextButton",content)
-    b.Size = UDim2.new(1,-12,0,40)
-    b.BackgroundColor3 = Color3.fromRGB(42,42,50)
-    b.Text = txt
-    b.TextColor3 = WHITE
-    b.Font = Enum.Font.GothamBold
-    b.TextSize = 12
-    corner(b,8)
-    b.Activated:Connect(callback)
-    return b
-end
-
-local function getHumanoid()
-    local c = LP.Character
-    return c and c:FindFirstChildOfClass("Humanoid")
-end
-
--- AIM SYSTEM
--- Camera aim assist for your own Studio game.
-
-local function GetMurderer()
-
-    if LP:GetAttribute("Role") ~= "Sheriff" then
-        return nil
+    if player:GetAttribute("Role") ~= "Sheriff" then
+        return
     end
 
-    local target = nil
-    local shortest = AimFOV
+    local target
 
-    for _,p in pairs(Players:GetPlayers()) do
+    for _, other in ipairs(Players:GetPlayers()) do
+        if other ~= player
+        and other:GetAttribute("Role") == "Murderer"
+        and other.Character then
 
-        if p ~= LP
-        and p:GetAttribute("Role") == "Murderer"
-        and p.Character then
+            local root = other.Character:FindFirstChild("HumanoidRootPart")
+            local hum = other.Character:FindFirstChildOfClass("Humanoid")
 
-            local head = p.Character:FindFirstChild("Head")
-
-            if head then
-
-                local pos,visible =
-                    Camera:WorldToViewportPoint(head.Position)
-
-                local center = Camera.ViewportSize/2
-
-                local distance = (
-                    Vector2.new(pos.X,pos.Y)-center
-                ).Magnitude
-
-                if visible and distance < shortest then
-                    shortest = distance
-                    target = head
-                end
+            if root and hum and hum.Health > 0 then
+                target = root
+                break
             end
         end
     end
 
-    return target
-end
-
-RunService.RenderStepped:Connect(function()
-
-    if not AimEnabled then return end
-
-    local target = GetMurderer()
-
     if target then
-
-        local goal = CFrame.lookAt(
-            Camera.CFrame.Position,
+        local desired = CFrame.lookAt(
+            camera.CFrame.Position,
             target.Position
         )
 
-        Camera.CFrame = Camera.CFrame:Lerp(
-            goal,
-            AimSmoothness
-        )
+        camera.CFrame = camera.CFrame:Lerp(desired, 0.08)
     end
-
 end)
 
--- TAB SYSTEM
+-- ESP for test game
+local highlights = {}
 
-local function showTab(name)
+RunService.Heartbeat:Connect(function()
+    for _, other in ipairs(Players:GetPlayers()) do
+        if other ~= player then
+            local char = other.Character
 
-    clear()
-
-    if name == "COMBAT" then
-
-        label("SHERIFF AIM SYSTEM")
-
-        button("AIM ASSIST ON / OFF",function()
-            AimEnabled = not AimEnabled
-        end)
-
-        button("AIM SMOOTHNESS 0.3",function()
-            AimSmoothness = 0.3
-        end)
-
-        button("AIM FOV 350",function()
-            AimFOV = 350
-        end)
-
-        button("AIM FOV 150",function()
-            AimFOV = 150
-        end)
-
-        label("COMBAT STATUS")
-
-        button("VIEW MY ROLE",function()
-            label("ROLE: "..tostring(
-                LP:GetAttribute("Role") or "Unknown"
-            ))
-        end)
-
-    elseif name == "VISUAL" then
-
-        label("PLAYER VISUAL")
-
-        button("PLAYER HIGHLIGHT",function()
-
-            for _,p in pairs(Players:GetPlayers()) do
-
-                if p ~= LP and p.Character then
-
-                    local oldHighlight =
-                        p.Character:FindFirstChild("GojoHighlight")
-
-                    if oldHighlight then
-                        oldHighlight:Destroy()
-                    else
-
-                        local h = Instance.new("Highlight")
-                        h.Name = "GojoHighlight"
-                        h.FillColor = RED
-                        h.OutlineColor = WHITE
-                        h.Parent = p.Character
-
-                    end
+            if esp and other:GetAttribute("Role") == "Murderer" and char then
+                if not highlights[other] then
+                    local hl = Instance.new("Highlight")
+                    hl.FillColor = Color3.fromRGB(255,0,0)
+                    hl.OutlineColor = Color3.new(1,1,1)
+                    hl.Parent = char
+                    highlights[other] = hl
                 end
+            elseif highlights[other] then
+                highlights[other]:Destroy()
+                highlights[other] = nil
             end
-        end)
-
-        button("REMOVE HIGHLIGHTS",function()
-
-            for _,p in pairs(Players:GetPlayers()) do
-
-                if p.Character then
-
-                    local h =
-                        p.Character:FindFirstChild("GojoHighlight")
-
-                    if h then h:Destroy() end
-
-                end
-            end
-        end)
-
-    elseif name == "MOVEMENT" then
-
-        label("MOVEMENT CONTROL")
-
-        button("SPEED 32",function()
-            local
+        end
+    end
+end)
